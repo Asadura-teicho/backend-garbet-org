@@ -1,0 +1,186 @@
+{
+  "summary": {
+    "passed": 26,
+    "failed": 0,
+    "totalFiles": 25,
+    "totalRoutes": 171
+  },
+  "routes": [
+    {
+      "file": "admin.routes.js",
+      "basePath": "/api/admin",
+      "totalRoutes": 49,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "auth.routes.js",
+      "basePath": "/api/auth",
+      "totalRoutes": 7,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "bet.routes.js",
+      "basePath": "/api/bets",
+      "totalRoutes": 4,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "betRound.routes.js",
+      "basePath": "/api/bet-rounds",
+      "totalRoutes": 4,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "bonus.routes.js",
+      "basePath": "/api/bonus",
+      "totalRoutes": 4,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "content.routes.js",
+      "basePath": "/api/content",
+      "totalRoutes": 4,
+      "requiresAuth": false,
+      "requiresAdmin": false
+    },
+    {
+      "file": "dashboard.routes.js",
+      "basePath": "/api/dashboard",
+      "totalRoutes": 4,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "game.routes.js",
+      "basePath": "/api/games",
+      "totalRoutes": 4,
+      "requiresAuth": false,
+      "requiresAdmin": false
+    },
+    {
+      "file": "gameProvider.routes.js",
+      "basePath": "/api/games/provider",
+      "totalRoutes": 4,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "iban.routes.js",
+      "basePath": "/api/ibans",
+      "totalRoutes": 6,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "kyc.routes.js",
+      "basePath": "/api/user/kyc",
+      "totalRoutes": 4,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "match.routes.js",
+      "basePath": "/api/matches",
+      "totalRoutes": 7,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "message.routes.js",
+      "basePath": "/api/messages",
+      "totalRoutes": 8,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "notification.routes.js",
+      "basePath": "/api/notifications",
+      "totalRoutes": 7,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "payment.routes.js",
+      "basePath": "/api/payment",
+      "totalRoutes": 8,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "promotion.routes.js",
+      "basePath": "/api/promotions",
+      "totalRoutes": 5,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "public.routes.js",
+      "basePath": "/api/public",
+      "totalRoutes": 1,
+      "requiresAuth": false,
+      "requiresAdmin": false
+    },
+    {
+      "file": "rapidapi.routes.js",
+      "basePath": "/api/rapidapi",
+      "totalRoutes": 6,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "report.routes.js",
+      "basePath": "/api/reports",
+      "totalRoutes": 5,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "settings.routes.js",
+      "basePath": "/api/settings",
+      "totalRoutes": 3,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "stats.routes.js",
+      "basePath": "/api/stats",
+      "totalRoutes": 3,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "support.routes.js",
+      "basePath": "/api/support",
+      "totalRoutes": 8,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    },
+    {
+      "file": "tournament.routes.js",
+      "basePath": "/api/tournaments",
+      "totalRoutes": 6,
+      "requiresAuth": true,
+      "requiresAdmin": false
+    },
+    {
+      "file": "transaction.routes.js",
+      "basePath": "/api/transactions",
+      "totalRoutes": 4,
+      "requiresAuth": false,
+      "requiresAdmin": false
+    },
+    {
+      "file": "user.routes.js",
+      "basePath": "/api/users",
+      "totalRoutes": 6,
+      "requiresAuth": true,
+      "requiresAdmin": true
+    }
+  ],
+  "errors": []
+}
