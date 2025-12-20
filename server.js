@@ -16,7 +16,9 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.set("trust proxy", 1); 
+app.set("trust proxy", 1);
+
+// Security headers
 app.use((req, res, next) => {
   res.setHeader("Content-Security-Policy", "script-src 'self' 'unsafe-eval' 'unsafe-inline';");
   next();
@@ -59,7 +61,15 @@ if (process.env.NODE_ENV === 'production') {
 app.use(cors({
   origin: function(origin, callback) {
     // allow requests with no origin (like Postman, mobile apps, server-to-server)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('📥 Request with no origin (server-to-server or tool)');
+      return callback(null, true);
+    }
+
+    // Log incoming origin for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🌐 CORS check for origin: ${origin}`);
+    }
 
     // In development, allow any localhost port
     if (process.env.NODE_ENV === 'development') {
@@ -68,22 +78,35 @@ app.use(cors({
       }
     }
 
-    // In production, strictly check against allowed origins
+    // In production, check against allowed origins
     if (process.env.NODE_ENV === 'production') {
       if (allowedOrigins.length === 0) {
-        console.warn('⚠️  WARNING: No allowed origins configured. Set FRONTEND_URL or ALLOWED_ORIGINS in environment.');
+        // If no origins configured, allow all with strong warning (TEMPORARY - should be fixed)
+        console.warn('⚠️  WARNING: No allowed origins configured! Allowing all origins temporarily.');
+        console.warn('⚠️  SECURITY RISK: Set FRONTEND_URL or ALLOWED_ORIGINS in environment variables!');
+        console.warn(`⚠️  Allowing origin: ${origin}`);
+        return callback(null, true);
       }
+      
       if (allowedOrigins.indexOf(origin) === -1) {
         // Log the blocked origin in production for security monitoring
         console.warn(`🚫 CORS blocked origin: ${origin}`);
+        console.warn(`📋 Allowed origins: ${allowedOrigins.join(', ')}`);
         const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
         return callback(new Error(msg), false);
       }
+      
+      // Origin is allowed
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ CORS allowed origin: ${origin}`);
+      }
     } else {
-      // In development, also check against allowed origins
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-        return callback(new Error(msg), false);
+      // In development, check against allowed origins but be more permissive
+      if (allowedOrigins.length > 0 && allowedOrigins.indexOf(origin) === -1) {
+        console.warn(`⚠️  Origin not in allowed list: ${origin}`);
+        console.warn(`📋 Allowed origins: ${allowedOrigins.join(', ')}`);
+        // In development, still allow but warn
+        return callback(null, true);
       }
     }
 
@@ -91,10 +114,16 @@ app.use(cors({
   },
   credentials: true, // allow cookies (still needed for some endpoints)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400, // 24 hours for preflight cache
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 
