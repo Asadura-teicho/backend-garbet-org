@@ -515,126 +515,143 @@ exports.changeOutcome = asyncHandler(async (req, res) => {
           }], { session });
         }
       }
+
+      // Update game
+      game.selectedWinner = newWinner;
+      game.winnerSelectedBy = adminId;
+      if (newDiceResult !== undefined) {
+        game.adminSetResult = newDiceResult;
+        game.diceResult = newDiceResult;
+      }
+      await game.save({ session });
+      await session.commitTransaction();
+
+      return res.json({
+        success: true,
+        message: 'PvP game outcome changed and payouts updated',
+        data: { game },
+      });
     } else {
       // For betting games, reverse old winner payouts and process new ones
       // Get all bets
-    const bets = await DiceRollBet.find({
-      game: game._id,
-      status: { $in: ['won', 'lost'] },
-    }).session(session);
+      const bets = await DiceRollBet.find({
+        game: game._id,
+        status: { $in: ['won', 'lost'] },
+      }).session(session);
 
-    const oldWinner = game.selectedWinner;
-    let totalPayout = 0;
-    let refundAmount = 0;
+      const oldWinner = game.selectedWinner;
+      let totalPayout = 0;
+      let refundAmount = 0;
 
-    // Reverse previous payouts
-    for (const bet of bets) {
-      const user = await User.findById(bet.user).session(session);
-      if (!user) continue;
+      // Reverse previous payouts
+      for (const bet of bets) {
+        const user = await User.findById(bet.user).session(session);
+        if (!user) continue;
 
-      if (bet.status === 'won') {
-        // Refund the win amount (deduct from user)
-        const winAmount = bet.winAmount;
-        user.balance = Math.max(0, (user.balance || 0) - winAmount);
-        await user.save({ session });
-        refundAmount += winAmount;
+        if (bet.status === 'won') {
+          // Refund the win amount (deduct from user)
+          const winAmount = bet.winAmount;
+          user.balance = Math.max(0, (user.balance || 0) - winAmount);
+          await user.save({ session });
+          refundAmount += winAmount;
 
-        // Reverse win transaction
-        if (bet.winTransaction) {
-          await Transaction.findByIdAndUpdate(
-            bet.winTransaction,
-            { status: 'cancelled' },
+          // Reverse win transaction
+          if (bet.winTransaction) {
+            await Transaction.findByIdAndUpdate(
+              bet.winTransaction,
+              { status: 'cancelled' },
+              { session }
+            );
+          }
+        }
+
+        // Reset bet status
+        bet.status = 'pending';
+        bet.winAmount = 0;
+        bet.settledAt = null;
+        bet.winTransaction = null;
+        await bet.save({ session });
+      }
+
+      // Set new winner
+      game.selectedWinner = newWinner;
+      game.winnerSelectedBy = adminId;
+      if (newDiceResult !== undefined) {
+        game.adminSetResult = newDiceResult;
+        game.diceResult = newDiceResult;
+      }
+
+      // Process new payouts
+      let winningBetsCount = 0;
+      for (const bet of bets) {
+        const user = await User.findById(bet.user).session(session);
+        if (!user) continue;
+
+        if (bet.selectedOption === newWinner) {
+          const winAmount = bet.betAmount * game.payoutMultiplier;
+          bet.winAmount = winAmount;
+          bet.status = 'won';
+          bet.settledAt = new Date();
+
+          user.balance = (user.balance || 0) + winAmount;
+          await user.save({ session });
+
+          const winTransaction = await Transaction.create(
+            [
+              {
+                user: user._id,
+                type: 'win',
+                amount: winAmount,
+                currency: user.currency || 'TRY',
+                status: 'completed',
+                description: `Dice Roll Game #${game.gameNumber} - Winner payout (changed)`,
+                metadata: {
+                  gameId: game._id,
+                  gameNumber: game.gameNumber,
+                  betId: bet._id,
+                  previousWinner: oldWinner,
+                },
+              },
+            ],
             { session }
           );
+
+          bet.winTransaction = winTransaction[0]._id;
+          totalPayout += winAmount;
+          winningBetsCount++;
+        } else {
+          bet.status = 'lost';
+          bet.winAmount = 0;
+          bet.settledAt = new Date();
         }
+
+        await bet.save({ session });
       }
 
-      // Reset bet status
-      bet.status = 'pending';
-      bet.winAmount = 0;
-      bet.settledAt = null;
-      bet.winTransaction = null;
-      await bet.save({ session });
-    }
+      // Update game stats
+      game.totalPayout = totalPayout;
+      game.adminProfit = game.totalBetAmount - totalPayout;
+      await game.save({ session });
 
-    // Set new winner
-    game.selectedWinner = newWinner;
-    game.winnerSelectedBy = adminId;
-    if (newDiceResult !== undefined) {
-      game.adminSetResult = newDiceResult;
-      game.diceResult = newDiceResult;
-    }
+      await session.commitTransaction();
 
-    // Process new payouts
-    let winningBetsCount = 0;
-    for (const bet of bets) {
-      const user = await User.findById(bet.user).session(session);
-      if (!user) continue;
-
-      if (bet.selectedOption === newWinner) {
-        const winAmount = bet.betAmount * game.payoutMultiplier;
-        bet.winAmount = winAmount;
-        bet.status = 'won';
-        bet.settledAt = new Date();
-
-        user.balance = (user.balance || 0) + winAmount;
-        await user.save({ session });
-
-        const winTransaction = await Transaction.create(
-          [
-            {
-              user: user._id,
-              type: 'win',
-              amount: winAmount,
-              currency: user.currency || 'TRY',
-              status: 'completed',
-              description: `Dice Roll Game #${game.gameNumber} - Winner payout (changed)`,
-              metadata: {
-                gameId: game._id,
-                gameNumber: game.gameNumber,
-                betId: bet._id,
-                previousWinner: oldWinner,
-              },
-            },
-          ],
-          { session }
-        );
-
-        bet.winTransaction = winTransaction[0]._id;
-        totalPayout += winAmount;
-        winningBetsCount++;
-      } else {
-        bet.status = 'lost';
-        bet.winAmount = 0;
-        bet.settledAt = new Date();
-      }
-
-      await bet.save({ session });
-    }
-
-    // Update game stats
-    game.totalPayout = totalPayout;
-    game.adminProfit = game.totalBetAmount - totalPayout;
-    await game.save({ session });
-
-    await session.commitTransaction();
-
-    res.json({
-      success: true,
-      message: 'Game outcome changed and payouts updated',
-      data: {
-        game,
-        stats: {
-          previousWinner: oldWinner,
-          newWinner,
-          totalBets: bets.length,
-          winningBets: winningBetsCount,
-          totalPayout,
-          refundAmount,
-          adminProfit: game.adminProfit,
+      res.json({
+        success: true,
+        message: 'Game outcome changed and payouts updated',
+        data: {
+          game,
+          stats: {
+            previousWinner: oldWinner,
+            newWinner,
+            totalBets: bets.length,
+            winningBets: winningBetsCount,
+            totalPayout,
+            refundAmount,
+            adminProfit: game.adminProfit,
+          },
         },
-      },
-    });
+      });
+    }
   } catch (error) {
     await session.abortTransaction();
     throw error;
