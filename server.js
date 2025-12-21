@@ -16,7 +16,9 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.set("trust proxy", 1); 
+app.set("trust proxy", 1);
+
+// Security headers
 app.use((req, res, next) => {
   res.setHeader("Content-Security-Policy", "script-src 'self' 'unsafe-eval' 'unsafe-inline';");
   next();
@@ -56,45 +58,78 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-app.use(cors({
+// CORS configuration function
+const corsOptions = {
   origin: function(origin, callback) {
     // allow requests with no origin (like Postman, mobile apps, server-to-server)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('📥 Request with no origin (server-to-server or tool)');
+      return callback(null, true);
+    }
+
+    // Log incoming origin for debugging (always log in production for CORS issues)
+    console.log(`🌐 CORS check for origin: ${origin}`);
+    console.log(`📋 Allowed origins: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'NONE (allowing all)'}`);
 
     // In development, allow any localhost port
     if (process.env.NODE_ENV === 'development') {
       if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        console.log(`✅ CORS allowed (localhost): ${origin}`);
         return callback(null, true);
       }
     }
 
-    // In production, strictly check against allowed origins
+    // In production, check against allowed origins
     if (process.env.NODE_ENV === 'production') {
       if (allowedOrigins.length === 0) {
-        console.warn('⚠️  WARNING: No allowed origins configured. Set FRONTEND_URL or ALLOWED_ORIGINS in environment.');
+        // If no origins configured, allow all with strong warning (TEMPORARY - should be fixed)
+        console.warn('⚠️  WARNING: No allowed origins configured! Allowing all origins temporarily.');
+        console.warn('⚠️  SECURITY RISK: Set FRONTEND_URL or ALLOWED_ORIGINS in environment variables!');
+        console.warn(`⚠️  Allowing origin: ${origin}`);
+        return callback(null, true);
       }
+      
       if (allowedOrigins.indexOf(origin) === -1) {
         // Log the blocked origin in production for security monitoring
         console.warn(`🚫 CORS blocked origin: ${origin}`);
+        console.warn(`📋 Allowed origins: ${allowedOrigins.join(', ')}`);
         const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
         return callback(new Error(msg), false);
       }
+      
+      // Origin is allowed
+      console.log(`✅ CORS allowed origin: ${origin}`);
     } else {
-      // In development, also check against allowed origins
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-        return callback(new Error(msg), false);
+      // In development, check against allowed origins but be more permissive
+      if (allowedOrigins.length > 0 && allowedOrigins.indexOf(origin) === -1) {
+        console.warn(`⚠️  Origin not in allowed list: ${origin}`);
+        console.warn(`📋 Allowed origins: ${allowedOrigins.join(', ')}`);
+        // In development, still allow but warn
+        console.log(`✅ CORS allowed (dev mode): ${origin}`);
+        return callback(null, true);
       }
+      console.log(`✅ CORS allowed origin: ${origin}`);
     }
 
     return callback(null, true);
   },
   credentials: true, // allow cookies (still needed for some endpoints)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400, // 24 hours for preflight cache
+  preflightContinue: false, // Let CORS handle preflight
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11) choke on 204
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight requests (OPTIONS) - this ensures they're handled correctly
+app.options('*', cors(corsOptions));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 
@@ -103,7 +138,7 @@ app.use(cookieParser());
 // =====================
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/users', require('./routes/user.routes'));
-app.use('/api/admin', adminRoutes); // Important for KYC
+app.use('/api/admin', adminRoutes); // Admin routes (includes KYC)
 app.use('/api/user/kyc', require('./routes/kyc.routes'));
 app.use('/api/transactions', require('./routes/transaction.routes'));
 app.use('/api/games', require('./routes/game.routes'));
@@ -112,10 +147,8 @@ app.use('/api/matches', require('./routes/match.routes'));
 app.use('/api/bonus', require('./routes/bonus.routes'));
 app.use('/api/support', require('./routes/support.routes'));
 app.use('/api/reports', require('./routes/report.routes'));
-app.use('/api/user/kyc', require('./routes/kyc.routes'));
 app.use('/api/settings', require('./routes/settings.routes'));
 app.use('/api/games/provider', require('./routes/gameProvider.routes'));
-app.use('/api/admin', require('./routes/admin.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/promotions', require('./routes/promotion.routes'));
 app.use('/api/messages', require('./routes/message.routes'));
@@ -128,6 +161,8 @@ app.use('/api/ibans', require('./routes/iban.routes'));
 app.use('/api/public', require('./routes/public.routes')); // Public endpoints (no auth)
 app.use('/api/content', require('./routes/content.routes'));
 app.use('/api/rapidapi', require('./routes/rapidapi.routes'));
+app.use('/api/dice-roll-games', require('./routes/diceRollGame.routes'));
+app.use('/api/dice-roll-bets', require('./routes/diceRollBet.routes'));
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
