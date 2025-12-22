@@ -189,15 +189,6 @@ router.put('/tournaments/:id', updateTournament);
 router.delete('/tournaments/:id', deleteTournament);
 router.get('/tournaments/:id/participants', getTournamentParticipants);
 
-// Game Round Management (Crash Game)
-router.get('/game-rounds', getRecentRounds);
-router.get('/game-rounds/current', getCurrentRound);
-router.get('/game-rounds/:id', getRoundDetails);
-router.get('/game-rounds/:id/statistics', getRoundStatistics);
-router.post('/game-rounds/start', startRound);
-router.post('/game-rounds/crash', crashRound);
-router.post('/game-rounds/:id/complete', completeRound);
-
 // Logs
 router.get('/logs', getAdminLogs);
 

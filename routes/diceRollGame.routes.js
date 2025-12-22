@@ -27,6 +27,9 @@ router.post('/leave-queue', authMiddleware, diceRollGameController.leaveMatchmak
 // Roll dice for player vs player game (user)
 router.post('/:id/roll-dice', authMiddleware, diceRollGameController.rollDice);
 
+// End game session (user) - after both players finish
+router.post('/:id/end-session', authMiddleware, diceRollGameController.endGameSession);
+
 // Get single game (public)
 router.get('/:id', diceRollGameController.getGame);
 
@@ -41,9 +44,6 @@ router.patch('/:id/close', authMiddleware, adminMiddleware, diceRollGameControll
 
 // Select winner (admin only)
 router.patch('/:id/select-winner', authMiddleware, adminMiddleware, diceRollGameController.selectWinner);
-
-// Select winner for PvP game (admin only)
-router.patch('/:id/select-pvp-winner', authMiddleware, adminMiddleware, diceRollGameController.selectPvPWinner);
 
 // Change outcome (admin only)
 router.patch('/:id/change-outcome', authMiddleware, adminMiddleware, diceRollGameController.changeOutcome);

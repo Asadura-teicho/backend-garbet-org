@@ -6,6 +6,8 @@
 const WithdrawalRequest = require('../../models/WithdrawalRequest.model');
 const User = require('../../models/User.model');
 const Transaction = require('../../models/Transaction.model');
+const Iban = require('../../models/Iban.model');
+const BalanceHistory = require('../../models/BalanceHistory.model');
 const { logAdminAction, getIpAddress, getUserAgent } = require('../../utils/adminLogger');
 const { sendWithdrawalApprovedEmail, sendWithdrawalRejectedEmail } = require('../../utils/emailService');
 const { createNotification } = require('../../utils/notificationHelper');

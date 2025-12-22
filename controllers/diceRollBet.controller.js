@@ -46,10 +46,16 @@ exports.placeBet = asyncHandler(async (req, res) => {
       throw new AppError('Game not found', 404);
     }
 
-    // Check if game is accepting bets
-    if (game.status !== 'accepting-bets') {
+    // Check if game is accepting bets (betting games) or is in-progress (PvP games for betting)
+    if (game.gameType === 'betting' && game.status !== 'accepting-bets') {
       await session.abortTransaction();
       throw new AppError(`Game is ${game.status}. Cannot place bets.`, 400);
+    }
+    
+    // For PvP games, allow betting only when in-progress (not when waiting-for-admin or completed)
+    if (game.gameType === 'player-vs-player' && game.status !== 'in-progress') {
+      await session.abortTransaction();
+      throw new AppError(`PvP game is ${game.status}. Can only bet on in-progress matches.`, 400);
     }
 
     // Get user
@@ -64,6 +70,16 @@ exports.placeBet = asyncHandler(async (req, res) => {
     if (balance < betAmount) {
       await session.abortTransaction();
       throw new AppError('Insufficient balance', 400);
+    }
+
+    // For PvP games, check if user is one of the players (they can't bet on their own game)
+    if (game.gameType === 'player-vs-player') {
+      const isPlayer1 = game.players.player1.user?.toString() === userId.toString();
+      const isPlayer2 = game.players.player2.user?.toString() === userId.toString();
+      if (isPlayer1 || isPlayer2) {
+        await session.abortTransaction();
+        throw new AppError('Players cannot bet on their own match', 400);
+      }
     }
 
     // Check if user already bet on this game
@@ -134,15 +150,46 @@ exports.placeBet = asyncHandler(async (req, res) => {
     game.totalBetAmount += betAmount;
     game.totalPlayers += 1;
 
-    // Update option-specific stats
-    if (selectedOption === 'player1') {
-      game.options.player1.totalBets += 1;
-      game.options.player1.totalBetAmount += betAmount;
-      game.options.player1.betCount += 1;
-    } else {
-      game.options.player2.totalBets += 1;
-      game.options.player2.totalBetAmount += betAmount;
-      game.options.player2.betCount += 1;
+    // Update option-specific stats (only for betting games, PvP games need options initialized)
+    if (game.gameType === 'betting') {
+      if (selectedOption === 'player1') {
+        game.options.player1.totalBets += 1;
+        game.options.player1.totalBetAmount += betAmount;
+        game.options.player1.betCount += 1;
+      } else {
+        game.options.player2.totalBets += 1;
+        game.options.player2.totalBetAmount += betAmount;
+        game.options.player2.betCount += 1;
+      }
+    } else if (game.gameType === 'player-vs-player') {
+      // For PvP games, initialize options if not exists and track bets
+      if (!game.options) {
+        game.options = {
+          player1: { 
+            name: game.players.player1.username || 'Player 1', 
+            totalBets: 0, 
+            totalBetAmount: 0, 
+            betCount: 0,
+            diceRange: { min: 1, max: 3 }
+          },
+          player2: { 
+            name: game.players.player2.username || 'Player 2', 
+            totalBets: 0, 
+            totalBetAmount: 0, 
+            betCount: 0,
+            diceRange: { min: 4, max: 6 }
+          },
+        };
+      }
+      if (selectedOption === 'player1') {
+        game.options.player1.totalBets += 1;
+        game.options.player1.totalBetAmount += betAmount;
+        game.options.player1.betCount += 1;
+      } else {
+        game.options.player2.totalBets += 1;
+        game.options.player2.totalBetAmount += betAmount;
+        game.options.player2.betCount += 1;
+      }
     }
 
     await game.save({ session });

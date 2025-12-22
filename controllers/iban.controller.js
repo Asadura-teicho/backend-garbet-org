@@ -4,6 +4,7 @@
  */
 
 const Iban = require('../models/Iban.model');
+const validator = require('validator');
 
 // -------------------------------------------
 // @desc    Get all IBANs
@@ -35,12 +36,14 @@ exports.getIbans = async (req, res) => {
     // Get total count
     const total = await Iban.countDocuments(query);
 
-    // Format response
+    // Format response (for admin - show full IBAN)
     const formattedIbans = ibans.map((iban) => ({
       id: iban._id,
       bankName: iban.bankName,
       accountHolder: iban.accountHolder,
-      ibanNumber: iban.ibanNumber,
+      ibanNumber: iban.ibanNumber, // Admin sees full IBAN
+      bicCode: iban.bicCode || null,
+      countryCode: iban.countryCode || null,
       isActive: iban.isActive,
       addedBy: iban.addedBy
         ? {
@@ -124,7 +127,7 @@ exports.getIbanById = async (req, res) => {
 // -------------------------------------------
 exports.createIban = async (req, res) => {
   try {
-    const { bankName, accountHolder, ibanNumber, isActive } = req.body;
+    const { bankName, accountHolder, ibanNumber, bicCode, isActive } = req.body;
     const adminId = req.user.id;
 
     // Validation
@@ -134,19 +137,43 @@ exports.createIban = async (req, res) => {
       });
     }
 
+    // Validate IBAN format
+    const trimmedIban = ibanNumber.trim().replace(/\s/g, '').toUpperCase();
+    if (!validator.isIBAN(trimmedIban)) {
+      return res.status(400).json({
+        message: 'Invalid IBAN format. Please enter a valid IBAN number.',
+      });
+    }
+
+    // Validate BIC code if provided (8 or 11 characters, alphanumeric)
+    if (bicCode) {
+      const trimmedBic = bicCode.trim().toUpperCase().replace(/\s/g, '');
+      const bicRegex = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+      if (!bicRegex.test(trimmedBic)) {
+        return res.status(400).json({
+          message: 'Invalid BIC/SWIFT code format. Must be 8 or 11 characters (e.g., DEUTDEFF or DEUTDEFF500).',
+        });
+      }
+    }
+
+    // Extract country code from IBAN
+    const countryCode = trimmedIban.substring(0, 2).toUpperCase();
+
     // Check if IBAN already exists
-    const existingIban = await Iban.findOne({ ibanNumber: ibanNumber.trim() });
+    const existingIban = await Iban.findOne({ ibanNumber: trimmedIban });
     if (existingIban) {
       return res.status(400).json({
         message: 'IBAN number already exists',
       });
     }
 
-    // Create IBAN
+    // Create IBAN (store normalized - uppercase, no spaces)
     const iban = await Iban.create({
       bankName: bankName.trim(),
       accountHolder: accountHolder.trim(),
-      ibanNumber: ibanNumber.trim(),
+      ibanNumber: trimmedIban, // Store normalized IBAN (will be encrypted in pre-save hook)
+      bicCode: bicCode ? bicCode.trim().toUpperCase().replace(/\s/g, '') : null,
+      countryCode,
       isActive: isActive !== undefined ? isActive : true,
       addedBy: adminId,
     });
@@ -186,7 +213,7 @@ exports.createIban = async (req, res) => {
 exports.updateIban = async (req, res) => {
   try {
     const { id } = req.params;
-    const { bankName, accountHolder, ibanNumber, isActive } = req.body;
+    const { bankName, accountHolder, ibanNumber, bicCode, isActive } = req.body;
 
     const iban = await Iban.findById(id);
 
@@ -197,14 +224,43 @@ exports.updateIban = async (req, res) => {
     }
 
     // Check if IBAN number is being changed and if it already exists
-    if (ibanNumber && ibanNumber.trim() !== iban.ibanNumber) {
-      const existingIban = await Iban.findOne({ ibanNumber: ibanNumber.trim() });
-      if (existingIban) {
-        return res.status(400).json({
-          message: 'IBAN number already exists',
-        });
+    if (ibanNumber) {
+      const trimmedIban = ibanNumber.trim().replace(/\s/g, '').toUpperCase();
+      
+      // Validate IBAN format if it's being changed
+      if (trimmedIban !== iban.ibanNumber) {
+        if (!validator.isIBAN(trimmedIban)) {
+          return res.status(400).json({
+            message: 'Invalid IBAN format. Please enter a valid IBAN number.',
+          });
+        }
+        
+        const existingIban = await Iban.findOne({ ibanNumber: trimmedIban });
+        if (existingIban) {
+          return res.status(400).json({
+            message: 'IBAN number already exists',
+          });
+        }
+        iban.ibanNumber = trimmedIban;
+        // Update country code
+        iban.countryCode = trimmedIban.substring(0, 2).toUpperCase();
       }
-      iban.ibanNumber = ibanNumber.trim();
+    }
+
+    // Validate BIC code if provided
+    if (bicCode !== undefined) {
+      if (bicCode) {
+        const trimmedBic = bicCode.trim().toUpperCase().replace(/\s/g, '');
+        const bicRegex = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+        if (!bicRegex.test(trimmedBic)) {
+          return res.status(400).json({
+            message: 'Invalid BIC/SWIFT code format. Must be 8 or 11 characters.',
+          });
+        }
+        iban.bicCode = trimmedBic;
+      } else {
+        iban.bicCode = null;
+      }
     }
 
     // Update fields
@@ -227,6 +283,8 @@ exports.updateIban = async (req, res) => {
         bankName: iban.bankName,
         accountHolder: iban.accountHolder,
         ibanNumber: iban.ibanNumber,
+        bicCode: iban.bicCode || null,
+        countryCode: iban.countryCode || null,
         isActive: iban.isActive,
         updatedAt: iban.updatedAt,
       },
@@ -327,12 +385,19 @@ exports.getActiveIbans = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Format response (no IDs, no admin info)
-    const formattedIbans = ibans.map((iban) => ({
-      bankName: iban.bankName,
-      accountHolder: iban.accountHolder,
-      ibanNumber: iban.ibanNumber,
-    }));
+    // Format response (no IDs, no admin info, mask IBAN for security)
+    const formattedIbans = ibans.map((iban) => {
+      // Mask IBAN: show first 4 and last 4 characters, mask the middle
+      const maskedIban = iban.ibanNumber.length > 8
+        ? `${iban.ibanNumber.substring(0, 4)}${'*'.repeat(iban.ibanNumber.length - 8)}${iban.ibanNumber.substring(iban.ibanNumber.length - 4)}`
+        : iban.ibanNumber;
+      
+      return {
+        bankName: iban.bankName,
+        accountHolder: iban.accountHolder,
+        ibanNumber: maskedIban, // Return masked IBAN for public display
+      };
+    });
 
     res.json({
       ibans: formattedIbans,

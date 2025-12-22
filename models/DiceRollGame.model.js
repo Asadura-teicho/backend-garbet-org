@@ -12,7 +12,7 @@ const diceRollGameSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ['waiting', 'matchmaking', 'accepting-bets', 'in-progress', 'closed', 'completed', 'cancelled'],
+      enum: ['waiting', 'matchmaking', 'accepting-bets', 'in-progress', 'waiting-for-admin', 'closed', 'completed', 'cancelled'],
       default: 'waiting',
       required: true,
     },

@@ -5,11 +5,12 @@ const transactionSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // Can be null for admin wallet transactions
+      default: null,
     },
     type: {
       type: String,
-      enum: ['deposit', 'withdrawal', 'bet', 'win', 'refund', 'bet_round', 'admin_credit', 'admin_debit', 'rejected'],
+      enum: ['deposit', 'withdrawal', 'bet', 'win', 'refund', 'bet_round', 'admin_credit', 'admin_debit', 'admin_profit', 'rejected'],
       required: true,
     },
     amount: {
