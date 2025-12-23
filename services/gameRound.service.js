@@ -92,7 +92,7 @@ async function crashRound(adminId, multiplier = null) {
 
     // Process each bet: convert wins/neutral to losses
     for (const bet of activeBets) {
-      // Calculate loss: user loses their bet amount (already deducted, but they don't get any win)
+      // Calculate loss: user loses their bet amount (already deducted, but they dont get any win)
       // The bet amount was already deducted when placed, so we just need to mark it as loss
       // If it was a win, we need to reverse the win amount
       

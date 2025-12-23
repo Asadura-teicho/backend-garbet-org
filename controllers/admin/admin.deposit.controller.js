@@ -161,7 +161,7 @@ exports.approveDeposit = async (req, res) => {
 
     await session.commitTransaction();
 
-    // Create notification (async, don't wait)
+    // Create notification (async, dont wait)
     createNotification({
       userId: deposit.user,
       type: 'deposit_approved',
@@ -210,7 +210,7 @@ exports.cancelDeposit = async (req, res) => {
     deposit.adminNotes = adminNotes || null;
     await deposit.save();
 
-    // Create notification (async, don't wait)
+    // Create notification (async, dont wait)
     createNotification({
       userId: deposit.user,
       type: 'deposit_rejected',
@@ -324,7 +324,7 @@ exports.bulkApproveDeposits = async (req, res) => {
       userAgent: getUserAgent(req),
     });
 
-    // Create notifications for bulk approved deposits (async, don't wait)
+    // Create notifications for bulk approved deposits (async, dont wait)
     const notificationPromises = deposits.map(deposit => {
       const finalAmount = deposit.adjustedAmount || deposit.amount;
       return createNotification({
@@ -391,7 +391,7 @@ exports.bulkCancelDeposits = async (req, res) => {
       userAgent: getUserAgent(req),
     });
 
-    // Create notifications for bulk cancelled deposits (async, don't wait)
+    // Create notifications for bulk cancelled deposits (async, dont wait)
     const cancelledDeposits = await DepositRequest.find({
       _id: { $in: depositIds },
       status: 'cancelled',

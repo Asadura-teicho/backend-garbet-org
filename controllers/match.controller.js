@@ -186,7 +186,7 @@ exports.updateMatch = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    // Don't allow updating if match is finished or has bets
+    // dont allow updating if match is finished or has bets
     const match = await Match.findById(id);
     if (!match) {
       return res.status(404).json({ message: 'Maç bulunamadı' });
@@ -378,7 +378,7 @@ exports.enterMatchResult = async (req, res) => {
       // Get unique users who placed bets on this match
       const uniqueUserIds = [...new Set(bets.map((bet) => bet.user.toString()))];
 
-      // Calculate loss bonus for each user (async, don't wait)
+      // Calculate loss bonus for each user (async, dont wait)
       uniqueUserIds.forEach(async (userId) => {
         try {
           await calculateLossBonus(userId, 'daily');

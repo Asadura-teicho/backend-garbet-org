@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
  *   deposit pool endpoints (`/api/admin/deposit-pool/*`).
  * - The codebase historically used uppercase statuses (PENDING/APPROVED/CANCELLED).
  *   We now standardize on lowercase (pending/approved/cancelled) but keep backwards
- *   compatibility so old records don't break.
+ *   compatibility so old records dont break.
  */
 
 const depositRequestSchema = new mongoose.Schema(

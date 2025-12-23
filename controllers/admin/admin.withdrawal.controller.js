@@ -154,12 +154,12 @@ exports.approveWithdrawal = async (req, res) => {
 
     await session.commitTransaction();
 
-    // Send email notification (async, don't wait)
+    // Send email notification (async, dont wait)
     sendWithdrawalApprovedEmail(user, withdrawal.amount, withdrawal.iban).catch((err) => {
       console.error('Withdrawal approval email error:', err);
     });
 
-    // Create in-app notification (async, don't wait)
+    // Create in-app notification (async, dont wait)
     createNotification({
       userId: withdrawal.user,
       type: 'withdrawal_approved',
@@ -259,12 +259,12 @@ exports.rejectWithdrawal = async (req, res) => {
 
     await session.commitTransaction();
 
-    // Send email notification (async, don't wait)
+    // Send email notification (async, dont wait)
     sendWithdrawalRejectedEmail(user, withdrawal.amount, rejectionReason).catch((err) => {
       console.error('Withdrawal rejection email error:', err);
     });
 
-    // Create in-app notification (async, don't wait)
+    // Create in-app notification (async, dont wait)
     createNotification({
       userId: withdrawal.user,
       type: 'withdrawal_rejected',
@@ -360,7 +360,7 @@ exports.bulkApproveWithdrawals = async (req, res) => {
       userAgent: getUserAgent(req),
     });
 
-    // Create notifications for bulk approved withdrawals (async, don't wait)
+    // Create notifications for bulk approved withdrawals (async, dont wait)
     const notificationPromises = withdrawals.map(withdrawal => 
       createNotification({
         userId: withdrawal.user._id || withdrawal.user,
@@ -467,7 +467,7 @@ exports.bulkRejectWithdrawals = async (req, res) => {
       userAgent: getUserAgent(req),
     });
 
-    // Create notifications for bulk rejected withdrawals (async, don't wait)
+    // Create notifications for bulk rejected withdrawals (async, dont wait)
     const notificationPromises = withdrawals.map(withdrawal => 
       createNotification({
         userId: withdrawal.user._id || withdrawal.user,

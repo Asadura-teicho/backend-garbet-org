@@ -139,7 +139,7 @@ exports.sendMessage = async (req, res) => {
       return res.status(404).json({ message: 'Recipient not found' });
     }
 
-    // Don't allow users to send messages to themselves
+    // dont allow users to send messages to themselves
     if (recipientId === userId) {
       return res.status(400).json({ message: 'Cannot send message to yourself' });
     }

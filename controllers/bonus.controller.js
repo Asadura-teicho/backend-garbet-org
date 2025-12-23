@@ -218,7 +218,7 @@ const checkAndUnlockBonus = async (bonus, userId, session) => {
         bonus.principalLost = true;
       }
     } else if (bonus.type === 'loss_bonus') {
-      // Loss bonuses don't require principal loss
+      // Loss bonuses dont require principal loss
       principalLost = true;
     }
 

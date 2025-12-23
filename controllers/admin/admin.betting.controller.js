@@ -206,7 +206,7 @@ exports.settleBet = async (req, res) => {
       userAgent: getUserAgent(req),
     });
 
-    // Create notification for bet settlement (async, don't wait)
+    // Create notification for bet settlement (async, dont wait)
     if (bet.user && (status === 'won' || status === 'lost')) {
       createNotification({
         userId: bet.user._id,
@@ -381,7 +381,7 @@ exports.bulkSettleBets = async (req, res) => {
       userAgent: getUserAgent(req),
     });
 
-    // Create notifications for bet settlements (async, don't wait)
+    // Create notifications for bet settlements (async, dont wait)
     if (status === 'won' || status === 'lost') {
       const notificationPromises = bets
         .filter(bet => bet.user && (status === 'won' || status === 'lost'))

@@ -48,7 +48,7 @@ async function testAuth() {
       },
       {
         withCredentials: true,
-        validateStatus: () => true, // Don't throw on any status
+        validateStatus: () => true, // dont throw on any status
       }
     );
 

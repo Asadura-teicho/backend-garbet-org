@@ -329,7 +329,7 @@ exports.approveWithdrawal = async (req, res) => {
 
     await session.commitTransaction();
 
-    // Send email notification (async, don't wait)
+    // Send email notification (async, dont wait)
     sendWithdrawalApprovedEmail(user, withdrawal.amount, withdrawal.iban).catch((err) => {
       console.error('Withdrawal approval email error:', err);
     });
@@ -418,7 +418,7 @@ exports.rejectWithdrawal = async (req, res) => {
 
     await session.commitTransaction();
 
-    // Send email notification (async, don't wait)
+    // Send email notification (async, dont wait)
     sendWithdrawalRejectedEmail(user, withdrawal.amount, rejectionReason).catch((err) => {
       console.error('Withdrawal rejection email error:', err);
     });
