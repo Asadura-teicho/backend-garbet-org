@@ -15,6 +15,7 @@ const {
 // ------------------------
 router.post('/register', register);
 router.post('/login', login);
+
 router.post('/logout', logout); // still public because it just clears cookies
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);

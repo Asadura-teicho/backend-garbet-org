@@ -138,7 +138,7 @@ const diceRollGameSchema = new Schema(
 );
 
 // Indexes for faster queries
-diceRollGameSchema.index({ gameNumber: 1 });
+// Note: gameNumber already has unique: true which creates an index, so we don't need to add it again
 diceRollGameSchema.index({ status: 1 });
 diceRollGameSchema.index({ createdAt: -1 });
 

@@ -61,7 +61,7 @@ const gameRoundSchema = new Schema(
 );
 
 // Indexes for faster queries
-gameRoundSchema.index({ roundNumber: 1 });
+// Note: roundNumber already has unique: true which creates an index, so we don't need to add it again
 gameRoundSchema.index({ status: 1 });
 gameRoundSchema.index({ createdAt: -1 });
 gameRoundSchema.index({ status: 1, createdAt: -1 });

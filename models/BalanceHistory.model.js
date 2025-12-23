@@ -45,7 +45,7 @@ const balanceHistorySchema = new Schema(
     },
     referenceType: {
       type: String,
-      enum: ['game', 'transaction', 'bet', 'withdrawal', 'deposit', null],
+      enum: ['game', 'transaction', 'bet', 'withdrawal', 'deposit'],
       default: null,
     },
     // Game outcome details (if applicable)

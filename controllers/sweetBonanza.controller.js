@@ -169,9 +169,9 @@ exports.playGame = asyncHandler(async (req, res) => {
   }
 
   const session = await mongoose.startSession();
-  session.startTransaction();
-
+  
   try {
+    session.startTransaction();
     // Get user with balance
     const user = await User.findById(userId).session(session);
     if (!user) {
@@ -273,7 +273,7 @@ exports.playGame = asyncHandler(async (req, res) => {
     }
 
     // Create transaction record
-    const transaction = await Transaction.create([{
+    const transactionData = {
       user: userId,
       type: actualWin > 0 ? 'game_win' : 'game_loss',
       amount: Math.abs(netChange),
@@ -294,10 +294,18 @@ exports.playGame = asyncHandler(async (req, res) => {
         reels: reels,
         winningPositions: winningPositions
       }
-    }], { session });
-
+    };
+    
+    const transaction = await Transaction.create([transactionData], { session });
+    
+    // Validate transaction was created
+    if (!transaction || !transaction[0] || !transaction[0]._id) {
+      await session.abortTransaction();
+      throw new AppError('Failed to create transaction record', 500);
+    }
+    
     // Record balance history
-    await BalanceHistory.create([{
+    const balanceHistoryData = {
       user: userId,
       changeType: actualWin > 0 ? 'win' : 'loss',
       previousBalance: initialBalance,
@@ -323,13 +331,12 @@ exports.playGame = asyncHandler(async (req, res) => {
         reels: reels,
         winningPositions: winningPositions
       }
-    }], { session });
+    };
+    
+    await BalanceHistory.create([balanceHistoryData], { session });
 
     // Commit transaction
     await session.commitTransaction();
-
-    // Fetch updated user to get final main balance
-    const updatedUser = await User.findById(userId);
 
     res.json({
       success: true,
@@ -348,10 +355,29 @@ exports.playGame = asyncHandler(async (req, res) => {
       }
     });
   } catch (error) {
-    await session.abortTransaction();
-    throw error;
+    // Abort transaction if it was started
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    
+    // Log error for debugging
+    console.error('Sweet Bonanza playGame error:', error);
+    
+    // If it's already an AppError, re-throw it
+    if (error instanceof AppError) {
+      throw error;
+    }
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(e => e.message).join(', ');
+      throw new AppError(`Validation error: ${errors}`, 400);
+    }
+    
+    // Handle other errors
+    throw new AppError(error.message || 'An error occurred while playing the game', 500);
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 });
 

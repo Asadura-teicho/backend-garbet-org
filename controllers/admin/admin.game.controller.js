@@ -107,7 +107,7 @@ exports.createGame = async (req, res) => {
       rtp,
       features,
       tags,
-      isNew,
+      isNewGame,
       isFeatured,
       isHot,
     } = req.body;
@@ -141,7 +141,7 @@ exports.createGame = async (req, res) => {
       rtp: rtp || null,
       features: features || [],
       tags: tags || [],
-      isNew: isNew || false,
+      isNewGame: isNewGame || false,
       isFeatured: isFeatured || false,
       isHot: isHot || false,
     });
@@ -204,7 +204,7 @@ exports.updateGame = async (req, res) => {
       'rtp',
       'features',
       'tags',
-      'isNew',
+      'isNewGame',
       'isFeatured',
       'isHot',
     ];

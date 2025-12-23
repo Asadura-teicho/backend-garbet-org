@@ -58,7 +58,7 @@ const gameCatalogSchema = new mongoose.Schema(
     tags: [{
       type: String,
     }],
-    isNew: {
+    isNewGame: {
       type: Boolean,
       default: false,
     },
