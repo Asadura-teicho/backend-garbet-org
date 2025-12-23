@@ -10,23 +10,23 @@ const mongoose = require('mongoose');
 const asyncHandler = require('../middleware/error.middleware').asyncHandler;
 const AppError = require('../middleware/error.middleware').AppError;
 
-// Symbol weights for 60-65% loss rate (35-40% win rate)
-// Balanced to allow more wins but keep them small
+// Symbol weights for 63% loss rate (37% win rate)
+// Low-value symbols are more common to reduce win frequency
 const SYMBOL_WEIGHTS = {
-  '🍇': 35, '🍊': 30, '🍋': 25, '🍉': 18, '🍌': 12,
-  '🍎': 8, '🍓': 4, '⭐': 2, '💎': 1  // Balanced weights
+  '🍇': 40, '🍊': 30, '🍋': 20, '🍉': 15, '🍌': 10,
+  '🍎': 5, '🍓': 3, '⭐': 1.5, '💎': 0.5  // Low-value symbols dominate
 };
 
-// Small multipliers - wins are small to ensure net loss over time
+// Reduced multipliers - wins are smaller than losses
 const SYMBOL_MULTIPLIERS = {
-  '💎': 25,   // Small
-  '⭐': 12,   // Small
-  '🍓': 6,   // Small
-  '🍎': 4,   // Small
-  '🍌': 2.5, // Small
-  '🍉': 2,   // Small
-  '🍋': 1.5, // Small
-  '🍊': 1.2, // Small
+  '💎': 20,   // Reduced from 25
+  '⭐': 10,   // Reduced from 12
+  '🍓': 5,   // Reduced from 6
+  '🍎': 3,   // Reduced from 4
+  '🍌': 2,   // Reduced from 2.5
+  '🍉': 1.5, // Reduced from 2
+  '🍋': 1.2, // Reduced from 1.5
+  '🍊': 1.1, // Reduced from 1.2
   '🍇': 1    // Equal to bet
 };
 
@@ -73,21 +73,32 @@ const generateReelResult = (betAmount) => {
   const winningPositions = [];
 
   Object.values(symbolCounts).forEach(({ symbol, position, count, positions }) => {
-    // 4+ symbols - guaranteed win (35-40% win rate target)
-    if (count >= 4) {
+    // 5+ symbols - guaranteed win (rare, bigger win)
+    if (count >= 5) {
       const baseMultiplier = SYMBOL_MULTIPLIERS[symbol] || 1;
-      // Small multiplier - wins are small
-      const multiplier = baseMultiplier * (count - 3) * 0.8; // Reduced multiplier
+      // Moderate multiplier for rare big wins
+      const multiplier = baseMultiplier * (count - 4) * 0.7;
       const win = betAmount * multiplier;
       totalWin += win;
       if (positions && positions.length > 0) {
         winningPositions.push(...positions);
       }
     }
-    // 3 symbols - 60% chance to win (small win)
-    else if (count === 3 && Math.random() < 0.6) {
+    // 4 symbols - guaranteed win but smaller (37% win rate target)
+    else if (count >= 4) {
       const baseMultiplier = SYMBOL_MULTIPLIERS[symbol] || 1;
-      const multiplier = baseMultiplier * 0.5; // Small multiplier
+      // Small multiplier - wins are smaller than losses
+      const multiplier = baseMultiplier * 0.6; // Reduced from 0.8
+      const win = betAmount * multiplier;
+      totalWin += win;
+      if (positions && positions.length > 0) {
+        winningPositions.push(...positions);
+      }
+    }
+    // 3 symbols - 30% chance to win (reduced from 60% to achieve 37% overall win rate)
+    else if (count === 3 && Math.random() < 0.3) {
+      const baseMultiplier = SYMBOL_MULTIPLIERS[symbol] || 1;
+      const multiplier = baseMultiplier * 0.4; // Small multiplier
       const win = betAmount * multiplier;
       totalWin += win;
       if (positions && positions.length > 0) {
@@ -96,11 +107,11 @@ const generateReelResult = (betAmount) => {
     }
   });
 
-  // Check for scatter wins - balanced for 35-40% win rate
+  // Check for scatter wins - balanced for 37% win rate
   const scatterCount = reels.flat().filter(s => s === '⭐' || s === '💎').length;
-  if (scatterCount >= 4) {
-    // Small scatter multipliers
-    const scatterMultiplier = scatterCount === 4 ? 1.2 : scatterCount === 5 ? 2 : scatterCount >= 6 ? 3 : 0;
+  if (scatterCount >= 5) {
+    // Reduced scatter multipliers - wins smaller than losses
+    const scatterMultiplier = scatterCount === 5 ? 1.5 : scatterCount >= 6 ? 2.5 : 0;
     totalWin += betAmount * scatterMultiplier;
     
     // Add scatter positions as winning positions for visual feedback
@@ -112,9 +123,20 @@ const generateReelResult = (betAmount) => {
       });
     });
   }
-  // 3 scatters - 50% chance for small win
-  else if (scatterCount === 3 && Math.random() < 0.5) {
-    totalWin += betAmount * 0.8; // Small scatter win
+  // 4 scatters - guaranteed but smaller win
+  else if (scatterCount >= 4) {
+    totalWin += betAmount * 1.0; // Small scatter win
+    reels.forEach((reel, reelIndex) => {
+      reel.forEach((symbol, symbolIndex) => {
+        if (symbol === '⭐' || symbol === '💎') {
+          winningPositions.push({ reel: reelIndex, position: symbolIndex });
+        }
+      });
+    });
+  }
+  // 3 scatters - 20% chance for small win (reduced from 50% to achieve 37% overall win rate)
+  else if (scatterCount === 3 && Math.random() < 0.2) {
+    totalWin += betAmount * 0.6; // Small scatter win
     reels.forEach((reel, reelIndex) => {
       reel.forEach((symbol, symbolIndex) => {
         if (symbol === '⭐' || symbol === '💎') {
@@ -180,9 +202,10 @@ exports.playGame = asyncHandler(async (req, res) => {
     }
 
     // Check if user account is active
-    if (user.status !== 'active') {
+    // Allow 'active' and 'pending' status (pending users can still play)
+    if (user.status !== 'active' && user.status !== 'pending') {
       await session.abortTransaction();
-      throw new AppError('Account is not active', 403);
+      throw new AppError(`Account is ${user.status}. Please contact support if you believe this is an error.`, 403);
     }
 
     // Check balance - using main deposited balance
@@ -203,25 +226,26 @@ exports.playGame = asyncHandler(async (req, res) => {
     const actualWin = Math.max(0, parseFloat(winAmount) || 0);
     let actualLoss = bet;
     
-    // If no win, apply loss multiplier (50% to 200% of bet for aggressive drain)
+    // If no win, apply loss multiplier (losses are higher than wins)
+    // Target: 63% loss rate with losses being higher than win amounts
     if (actualWin === 0) {
-      // Loss multiplier: 50% to 200% of bet amount (aggressive gradual drain)
-      // Higher chance of 100%+ losses to drain balance faster
+      // Loss multiplier: 100% to 180% of bet amount
+      // Ensures losses are consistently higher than typical wins (which are 0.4x to 1.5x bet)
       const random = Math.random();
       let lossMultiplier;
       
-      if (random < 0.3) {
-        // 30% chance: 50-75% of bet (small loss)
-        lossMultiplier = 0.5 + (Math.random() * 0.25);
-      } else if (random < 0.7) {
-        // 40% chance: 75-100% of bet (normal loss)
-        lossMultiplier = 0.75 + (Math.random() * 0.25);
-      } else if (random < 0.9) {
-        // 20% chance: 100-150% of bet (big loss)
-        lossMultiplier = 1.0 + (Math.random() * 0.5);
+      if (random < 0.25) {
+        // 25% chance: 100-115% of bet (small loss, still higher than most wins)
+        lossMultiplier = 1.0 + (Math.random() * 0.15);
+      } else if (random < 0.6) {
+        // 35% chance: 115-135% of bet (normal loss)
+        lossMultiplier = 1.15 + (Math.random() * 0.20);
+      } else if (random < 0.85) {
+        // 25% chance: 135-160% of bet (big loss)
+        lossMultiplier = 1.35 + (Math.random() * 0.25);
       } else {
-        // 10% chance: 150-200% of bet (huge loss)
-        lossMultiplier = 1.5 + (Math.random() * 0.5);
+        // 15% chance: 160-180% of bet (huge loss)
+        lossMultiplier = 1.6 + (Math.random() * 0.20);
       }
       
       actualLoss = bet * lossMultiplier;
@@ -235,6 +259,7 @@ exports.playGame = asyncHandler(async (req, res) => {
       actualLoss = Math.max(0, actualLoss);
     } else {
       // If win, still deduct full bet but win amount compensates
+      // Net result: win - bet (which is typically smaller than loss amounts)
       actualLoss = bet;
     }
 
