@@ -28,13 +28,33 @@ const allowedOrigins = [];
 
 // Add production frontend URL from environment
 if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
+  const frontendUrl = process.env.FRONTEND_URL.trim().replace(/\/+$/, '');
+  if (frontendUrl) {
+    allowedOrigins.push(frontendUrl);
+    // Also add with www prefix if not present (and vice versa)
+    if (!frontendUrl.includes('www.')) {
+      const withWww = frontendUrl.replace(/^(https?:\/\/)/, '$1www.');
+      allowedOrigins.push(withWww);
+    } else {
+      const withoutWww = frontendUrl.replace(/^(https?:\/\/)www\./, '$1');
+      allowedOrigins.push(withoutWww);
+    }
+  }
 }
 
 // Add additional allowed origins from environment (comma-separated)
 if (process.env.ALLOWED_ORIGINS) {
-  const additionalOrigins = process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
+  const additionalOrigins = process.env.ALLOWED_ORIGINS.split(',')
+    .map(origin => origin.trim().replace(/\/+$/, ''))
+    .filter(origin => origin.length > 0);
   allowedOrigins.push(...additionalOrigins);
+}
+
+// Log configured origins on startup
+if (allowedOrigins.length > 0) {
+  console.log('✅ CORS configured with origins:', allowedOrigins.join(', '));
+} else {
+  console.warn('⚠️  No CORS origins configured. Set FRONTEND_URL or ALLOWED_ORIGINS environment variable.');
 }
 
 // In development, add default localhost ports
@@ -67,48 +87,78 @@ const corsOptions = {
       return callback(null, true);
     }
 
+    // Normalize origin - remove trailing slash and ensure proper format
+    const normalizedOrigin = origin.replace(/\/+$/, '');
+    
     // Log incoming origin for debugging (always log in production for CORS issues)
-    console.log(`🌐 CORS check for origin: ${origin}`);
+    console.log(`🌐 CORS check for origin: ${normalizedOrigin}`);
     console.log(`📋 Allowed origins: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'NONE (allowing all)'}`);
 
     // In development, allow any localhost port
     if (process.env.NODE_ENV === 'development') {
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        console.log(`✅ CORS allowed (localhost): ${origin}`);
+      if (normalizedOrigin.startsWith('http://localhost:') || normalizedOrigin.startsWith('http://127.0.0.1:')) {
+        console.log(`✅ CORS allowed (localhost): ${normalizedOrigin}`);
         return callback(null, true);
       }
     }
 
+    // Normalize allowed origins for comparison (remove trailing slashes)
+    const normalizedAllowedOrigins = allowedOrigins.map(orig => orig.replace(/\/+$/, ''));
+
     // In production, check against allowed origins
     if (process.env.NODE_ENV === 'production') {
-      if (allowedOrigins.length === 0) {
+      if (normalizedAllowedOrigins.length === 0) {
         // If no origins configured, allow all with strong warning (TEMPORARY - should be fixed)
         console.warn('⚠️  WARNING: No allowed origins configured! Allowing all origins temporarily.');
         console.warn('⚠️  SECURITY RISK: Set FRONTEND_URL or ALLOWED_ORIGINS in environment variables!');
-        console.warn(`⚠️  Allowing origin: ${origin}`);
+        console.warn(`⚠️  Allowing origin: ${normalizedOrigin}`);
         return callback(null, true);
       }
       
-      if (allowedOrigins.indexOf(origin) === -1) {
-        // Log the blocked origin in production for security monitoring
-        console.warn(`🚫 CORS blocked origin: ${origin}`);
-        console.warn(`📋 Allowed origins: ${allowedOrigins.join(', ')}`);
-        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-        return callback(new Error(msg), false);
+      // Check exact match first
+      if (normalizedAllowedOrigins.indexOf(normalizedOrigin) !== -1) {
+        console.log(`✅ CORS allowed origin (exact match): ${normalizedOrigin}`);
+        return callback(null, true);
       }
       
-      // Origin is allowed
-      console.log(`✅ CORS allowed origin: ${origin}`);
+      // Also check if origin matches any allowed origin (handles www vs non-www, http vs https)
+      const originMatches = normalizedAllowedOrigins.some(allowed => {
+        // Exact match
+        if (allowed === normalizedOrigin) return true;
+        // Check if origin is a subdomain or matches domain pattern
+        try {
+          const originUrl = new URL(normalizedOrigin);
+          const allowedUrl = new URL(allowed);
+          // Match same domain (with or without www)
+          if (originUrl.hostname === allowedUrl.hostname) return true;
+          // Match domain without www prefix
+          if (originUrl.hostname.replace(/^www\./, '') === allowedUrl.hostname.replace(/^www\./, '')) return true;
+        } catch (e) {
+          // Invalid URL, skip
+        }
+        return false;
+      });
+      
+      if (originMatches) {
+        console.log(`✅ CORS allowed origin (domain match): ${normalizedOrigin}`);
+        return callback(null, true);
+      }
+      
+      // Origin not allowed
+      console.warn(`🚫 CORS blocked origin: ${normalizedOrigin}`);
+      console.warn(`📋 Allowed origins: ${normalizedAllowedOrigins.join(', ')}`);
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
     } else {
       // In development, check against allowed origins but be more permissive
-      if (allowedOrigins.length > 0 && allowedOrigins.indexOf(origin) === -1) {
-        console.warn(`⚠️  Origin not in allowed list: ${origin}`);
-        console.warn(`📋 Allowed origins: ${allowedOrigins.join(', ')}`);
+      if (normalizedAllowedOrigins.length > 0 && normalizedAllowedOrigins.indexOf(normalizedOrigin) === -1) {
+        console.warn(`⚠️  Origin not in allowed list: ${normalizedOrigin}`);
+        console.warn(`📋 Allowed origins: ${normalizedAllowedOrigins.join(', ')}`);
         // In development, still allow but warn
-        console.log(`✅ CORS allowed (dev mode): ${origin}`);
+        console.log(`✅ CORS allowed (dev mode): ${normalizedOrigin}`);
         return callback(null, true);
       }
-      console.log(`✅ CORS allowed origin: ${origin}`);
+      console.log(`✅ CORS allowed origin: ${normalizedOrigin}`);
     }
 
     return callback(null, true);
