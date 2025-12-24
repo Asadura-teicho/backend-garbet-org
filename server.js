@@ -144,10 +144,23 @@ const corsOptions = {
         return callback(null, true);
       }
       
+      // Check if it's a Vercel URL (temporary fallback for common Vercel patterns)
+      const isVercelUrl = normalizedOrigin.includes('.vercel.app') || normalizedOrigin.includes('vercel.app');
+      if (isVercelUrl && normalizedAllowedOrigins.length > 0) {
+        console.warn(`⚠️  Vercel URL detected but not in allowed list: ${normalizedOrigin}`);
+        console.warn(`⚠️  TEMPORARILY ALLOWING - Please add FRONTEND_URL=${normalizedOrigin} to Render environment variables!`);
+        console.warn(`📋 Current allowed origins: ${normalizedAllowedOrigins.join(', ')}`);
+        console.log(`✅ CORS allowed (Vercel fallback): ${normalizedOrigin}`);
+        return callback(null, true);
+      }
+      
       // Origin not allowed
       console.warn(`🚫 CORS blocked origin: ${normalizedOrigin}`);
       console.warn(`📋 Allowed origins: ${normalizedAllowedOrigins.join(', ')}`);
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      console.error(`❌ FIX REQUIRED: Add this URL to Render environment variables:`);
+      console.error(`   FRONTEND_URL=${normalizedOrigin}`);
+      console.error(`   OR add to ALLOWED_ORIGINS=${normalizedOrigin}`);
+      const msg = `CORS blocked: ${normalizedOrigin} is not in allowed origins. Add FRONTEND_URL=${normalizedOrigin} to Render environment variables and redeploy.`;
       return callback(new Error(msg), false);
     } else {
       // In development, check against allowed origins but be more permissive
