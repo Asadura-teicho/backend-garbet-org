@@ -58,8 +58,15 @@ if (allowedOrigins.length > 0) {
 }
 
 // In development, add default localhost ports
-if (process.env.NODE_ENV === 'development') {
-  allowedOrigins.push('http://localhost:3000', 'http://localhost:3002');
+if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push(
+    'http://localhost:3000',  // Next.js default
+    'http://localhost:3002',  // Alternative port
+    'http://localhost:5173',  // Vite default
+    'http://localhost:5174',  // Vite alternative
+    'http://127.0.0.1:5173',  // Vite with IP
+    'http://127.0.0.1:3000'   // Next.js with IP
+  );
 }
 
 // Validate JWT_SECRET in production
