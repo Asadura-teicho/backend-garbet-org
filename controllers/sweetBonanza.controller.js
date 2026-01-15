@@ -52,8 +52,9 @@ const getWeightedSymbol = () => {
  * Wins are small to ensure net loss over time
  */
 const generateReelResult = (betAmount) => {
+  // Generate 6 columns x 5 rows grid (matching frontend expectation)
   const reels = Array(6).fill(null).map(() => 
-    Array(3).fill(null).map(() => getWeightedSymbol())
+    Array(5).fill(null).map(() => getWeightedSymbol())
   );
 
   // Calculate base win

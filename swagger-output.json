@@ -5,7 +5,7 @@
     "description": "Auto-generated Swagger documentation with JWT auth",
     "version": "1.0.0"
   },
-  "host": "localhost:5000",
+  "host": "localhost:5173",
   "basePath": "/",
   "schemes": [
     "http"

@@ -64,8 +64,12 @@ if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'producti
     'http://localhost:3002',  // Alternative port
     'http://localhost:5173',  // Vite default
     'http://localhost:5174',  // Vite alternative
+    'http://localhost:5175',  // Vite alternative port 2
+    'http://localhost:5176',  // Vite alternative port 3
     'http://127.0.0.1:5173',  // Vite with IP
-    'http://127.0.0.1:3000'   // Next.js with IP
+    'http://127.0.0.1:5174',  // Vite with IP alternative
+    'http://127.0.0.1:3000',  // Next.js with IP
+    'http://127.0.0.1:3002'   // Next.js with IP alternative
   );
 }
 
@@ -206,37 +210,60 @@ app.use(cookieParser());
 // =====================
 // Routes
 // =====================
+// Public routes (no authentication required)
+app.use('/api/public', require('./routes/public.routes')); // Public endpoints (no auth)
+app.use('/api/content', require('./routes/content.routes')); // Content routes
+
+// Authentication routes
 app.use('/api/auth', require('./routes/auth.routes'));
+
+// User routes
 app.use('/api/users', require('./routes/user.routes'));
-app.use('/api/admin', adminRoutes); // Important for KYC
-app.use('/api/user/kyc', require('./routes/kyc.routes'));
+app.use('/api/user/kyc', require('./routes/kyc.routes')); // User KYC routes
+
+// Admin routes (protected, requires admin auth)
+app.use('/api/admin', adminRoutes);
+
+// Transaction & Financial routes
 app.use('/api/transactions', require('./routes/transaction.routes'));
-app.use('/api/games', require('./routes/game.routes'));
 app.use('/api/payment', require('./routes/payment.routes'));
-app.use('/api/sweet-bonanza', require('./routes/sweetBonanza.routes'));
-app.use('/api/matches', require('./routes/match.routes'));
-app.use('/api/bonus', require('./routes/bonus.routes'));
-app.use('/api/support', require('./routes/support.routes'));
-app.use('/api/reports', require('./routes/report.routes'));
-app.use('/api/user/kyc', require('./routes/kyc.routes'));
-app.use('/api/settings', require('./routes/settings.routes'));
+app.use('/api/financial', require('./routes/financial.routes'));
+app.use('/api/ibans', require('./routes/iban.routes'));
+
+// Game routes
+app.use('/api/games', require('./routes/game.routes'));
 app.use('/api/games/provider', require('./routes/gameProvider.routes'));
-app.use('/api/admin', require('./routes/admin.routes'));
-app.use('/api/notifications', require('./routes/notification.routes'));
-app.use('/api/promotions', require('./routes/promotion.routes'));
-app.use('/api/messages', require('./routes/message.routes'));
-app.use('/api/tournaments', require('./routes/tournament.routes'));
-app.use('/api/stats', require('./routes/stats.routes'));
-app.use('/api/dashboard', require('./routes/dashboard.routes'));
+app.use('/api/sweet-bonanza', require('./routes/sweetBonanza.routes')); // Sweet Bonanza game
+
+// Betting routes
 app.use('/api/bets', require('./routes/bet.routes'));
 app.use('/api/bet-rounds', require('./routes/betRound.routes'));
-app.use('/api/ibans', require('./routes/iban.routes'));
-app.use('/api/public', require('./routes/public.routes')); // Public endpoints (no auth)
-app.use('/api/content', require('./routes/content.routes'));
-app.use('/api/rapidapi', require('./routes/rapidapi.routes'));
+app.use('/api/matches', require('./routes/match.routes'));
 app.use('/api/dice-roll-games', require('./routes/diceRollGame.routes'));
 app.use('/api/dice-roll-bets', require('./routes/diceRollBet.routes'));
-app.use('/api/financial', require('./routes/financial.routes'));
+
+// Bonus & Promotion routes
+app.use('/api/bonus', require('./routes/bonus.routes'));
+app.use('/api/promotions', require('./routes/promotion.routes'));
+
+// Communication routes
+app.use('/api/support', require('./routes/support.routes'));
+app.use('/api/messages', require('./routes/message.routes'));
+app.use('/api/notifications', require('./routes/notification.routes'));
+
+// Dashboard & Stats routes
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
+app.use('/api/stats', require('./routes/stats.routes'));
+
+// Tournament routes
+app.use('/api/tournaments', require('./routes/tournament.routes'));
+
+// Settings & Reports routes
+app.use('/api/settings', require('./routes/settings.routes'));
+app.use('/api/reports', require('./routes/report.routes'));
+
+// External API routes
+app.use('/api/rapidapi', require('./routes/rapidapi.routes'));
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
