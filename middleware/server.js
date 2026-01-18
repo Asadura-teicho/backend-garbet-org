@@ -214,7 +214,6 @@ app.use('/api/transactions', require('./routes/transaction.routes'));
 app.use('/api/games', require('./routes/game.routes'));
 app.use('/api/payment', require('./routes/payment.routes'));
 app.use('/api/sweet-bonanza', require('./routes/sweetBonanza.routes'));
-app.use('/api/gates-of-olympus', require('./routes/gatesOfOlympus.routes'));
 app.use('/api/matches', require('./routes/match.routes'));
 app.use('/api/bonus', require('./routes/bonus.routes'));
 app.use('/api/support', require('./routes/support.routes'));

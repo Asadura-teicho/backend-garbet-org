@@ -211,19 +211,11 @@ exports.register = async (req, res) => {
 // -------------------------------------------
 exports.login = async (req, res) => {
   try {
-    let { email, username, password } = req.body;
-    // Support both email and username fields
-    const identifier = email || username;
-    if (!identifier || !password) return res.status(400).json({ message: 'Email/username and password required' });
+    let { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
 
-    const normalizedIdentifier = identifier.toLowerCase().trim();
-    // Try email first, then username
-    let user = await User.findOne({ email: normalizedIdentifier }).select('+password');
-    
-    // If not found by email, try username
-    if (!user) {
-      user = await User.findOne({ username: normalizedIdentifier }).select('+password');
-    }
+    email = email.toLowerCase().trim();
+    const user = await User.findOne({ email }).select('+password');
 
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: 'Invalid email or password' });
